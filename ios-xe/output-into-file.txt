@@ -1,12 +1,12 @@
 ! Tue, 26 Nov 2019
 !
 ! #output-into-file
-! This script sends CLI outputs into a file with a custom name based on the hostname
+! Sends CLI outputs into a file, the file name is based on the hostname and unix time stamp
 !  * HW: ISR4321/K9
 !  * SW: isr4300-universalk9.16.12.01a.SPA.bin
 !
 ! Trigger:
-!  This script runs manually, use the command: 'event manager run output-into-file'
+!  Use the command: 'event manager run output-into-file'
 
 
 event manager applet output-into-file authorization bypass
@@ -21,17 +21,13 @@ event manager applet output-into-file authorization bypass
 
  action 100 set counter 0
 
- action 201 set cmd "show clock"
- action 202 cli command $cmd
- action 203 file puts FD "------------------ $cmd ------------------"
- action 204 file puts FD "$_cli_result"
- action 205 increment counter 1
+ action 200 foreach cmd "show clock,show version,show inventory" ","
 
- action 301 set cmd "show version"
- action 302 cli command $cmd
- action 303 file puts FD "------------------ $cmd ------------------"
- action 304 file puts FD "$_cli_result"
- action 305 increment counter 1
+ action 301 cli command $cmd
+ action 302 file puts FD "------------------ $cmd ------------------"
+ action 303 file puts FD "$_cli_result"
+ action 304 increment counter 1
+ action 305 end
 
  action 900 file close FD
  action 950 syslog msg "File 'flash:$_info_routername-$_event_pub_sec' closed with $counter outputs logged."
