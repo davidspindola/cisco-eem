@@ -1,0 +1,60 @@
+! Tue, 26 Nov 2019
+!
+! #cpu-highest-proc-stack
+! Gathers a set of commands to troubleshoot high CPU, it also dumps the stack of the
+! processes that had a utilization greater than 0
+!  * HW: ISR4321/K9
+!  * SW: isr4300-universalk9.16.12.01a.SPA.bin
+!
+! Trigger:
+!  * When the CPU usage reaches 80% of total utilization
+!  * Use the command: 'send log CPURISINGTHRESHOLD'
+
+
+process cpu threshold type total rising 80 interval 5 falling 50 interval 5
+
+event manager applet cpu-highest-proc-stack authorization bypass
+
+ event syslog pattern "CPURISINGTHRESHOLD" maxrun 60
+
+ action 000 info type routername
+ action 001 cli command "enable"
+ action 003 cli command "terminal length 0"
+
+ action 100 set filename "flash:cpu-$_event_pub_sec"
+ action 101 set stackfile "flash:stacks-$_event_pub_sec"
+ action 105 syslog msg "High CPU detected, logging data in $filename"
+
+ action 199 file open FD $filename a+
+
+ action 300 foreach cmd "show clock,show version,show align,show debug,show process cpu history" ","
+
+ action 301 cli command $cmd
+ action 302 file puts FD "------------------ $cmd ------------------"
+ action 303 file puts FD "$_cli_result"
+ action 399 end
+
+ action 400 set cmd "show process cpu sorted | exclude 0.00%  0.00%  0.00%"
+ action 401 cli command $cmd
+ action 402 set proc_output "$_cli_result"
+ action 403 file puts FD "------------------ $cmd ------------------"
+ action 404 file puts FD "$proc_output"
+ 
+ action 411 set counter 0
+ action 412 foreach line "$proc_output" "\n"
+ action 413 increment counter 1
+ action 414 regexp "^[ ]+([0-9]+).*%[ ]+[0-9]+[ ]+([A-z].*)$" $line _match pid process
+
+ action 421 if $counter gt 5
+ action 422 set cmd "show stacks $pid"
+ action 423 cli command "$cmd | append $stackfile"
+ action 424 syslog msg "Saving stack in $stackfile for PID: $pid, Proc: $process."
+ action 429 end
+
+ action 449 end
+
+ action 900 file close FD
+ action 998 syslog msg "File '$filename' created with outputs to troubleshoot the high CPU event"
+ action 999 cli command "end"
+
+end
