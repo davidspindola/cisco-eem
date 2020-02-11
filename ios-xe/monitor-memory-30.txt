@@ -1,0 +1,35 @@
+! Tue, 11 Feb 2020
+!
+! #monitor-memory-30
+! Gathers a set of commands every 30 mins to monitor memory usage
+!  * HW: ISR4321/K9
+!  * SW: isr4300-universalk9.16.06.05.SPA.bin
+!
+! Trigger:
+!  * Every 30 minutes using CRON
+
+event manager applet monitor-memory-30 authorization bypass
+
+ event timer cron name HALFHOUR cron-entry "0,30 * * * *"
+
+ action 000 info type routername
+ action 001 cli command "enable"
+ action 003 cli command "terminal length 0"
+
+ action 100 set filename "flash:memory-usage"
+ action 105 syslog msg "Memory monitoring, logging data in $filename"
+
+ action 199 file open FD $filename a+
+
+ action 300 foreach cmd "show platform software status control-processor brief,show platform software process list rp active summary,show platform software process slot rp active monitor cycles 1" ","
+
+ action 301 cli command $cmd
+ action 302 file puts FD "------------------ $cmd ------------------"
+ action 303 file puts FD "$_cli_result"
+ action 399 end
+
+ action 900 file close FD
+ action 998 syslog msg "File '$filename' created with outputs to monitor the memory usage"
+ action 999 cli command "end"
+
+end
