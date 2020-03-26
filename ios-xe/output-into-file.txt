@@ -1,4 +1,4 @@
-! Tue, 26 Nov 2019
+! Thu, 26 Mar 2020
 !
 ! #output-into-file
 ! Sends CLI outputs into a file, the file name is based on the hostname and unix time stamp
@@ -14,10 +14,12 @@ event manager applet output-into-file authorization bypass
  event none maxrun 60
 
  action 000 info type routername
- action 001 syslog msg "Creating and logging data to 'flash:$_info_routername-$_event_pub_sec'."
- action 002 cli command "enable"
- action 003 cli command "terminal length 0"
- action 004 file open FD flash:$_info_routername-$_event_pub_sec a+
+ action 001 set filename "flash:$_info_routername-$_event_pub_sec"
+ action 002 syslog msg "Creating and logging data to '$filename'."
+ action 003 file open FD flash:$_info_routername-$_event_pub_sec a+
+
+ action 051 cli command "enable"
+ action 052 cli command "terminal length 0"
 
  action 100 set counter 0
 
@@ -30,7 +32,7 @@ event manager applet output-into-file authorization bypass
  action 305 end
 
  action 900 file close FD
- action 950 syslog msg "File 'flash:$_info_routername-$_event_pub_sec' closed with $counter outputs logged."
+ action 950 syslog msg "File '$filename' closed with $counter outputs logged."
  action 999 cli command "end"
 
 end
