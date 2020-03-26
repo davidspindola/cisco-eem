@@ -16,7 +16,7 @@ event manager applet output-into-file authorization bypass
  action 000 info type routername
  action 001 set filename "flash:$_info_routername-$_event_pub_sec"
  action 002 syslog msg "Creating and logging data to '$filename'."
- action 003 file open FD flash:$_info_routername-$_event_pub_sec a+
+ action 003 file open FD $filename a+
 
  action 051 cli command "enable"
  action 052 cli command "terminal length 0"
