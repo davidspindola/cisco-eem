@@ -1,0 +1,51 @@
+! Tue, 28 Jul 2020
+!
+! #child-object
+! Gather show commands for objects only if a child object is present
+!  * HW: CSR1000v
+!  * SW: csr1000v-universalk9.17.02.01r.SPA.bin
+!
+! Trigger:
+!  The log message 'OBJ_DWNLD'
+
+event manager applet OBJ_DWNLD authorization bypass
+event syslog pattern "OBJ_DWNLD" ratelimit 600 maxrun 500
+action 000 info type routername
+action 001 set filename "flash:$_info_routername-$_event_pub_sec"
+action 002 syslog msg "Creating and logging data to '$filename'."
+action 003 file open FD $filename a+
+action 051 cli command "enable"
+action 052 cli command "terminal length 0"
+action 053 cli command "terminal exec prompt timestamp"
+action 100 set counter 0
+action 110 set _object_id 0
+action 300 foreach cmd "show platform software object-manager FP active error-object,sh pl so obj FP act statistics,sh pl so obj RP act object-type-info" ","
+  action 301 cli command $cmd
+  action 302 file puts FD "------------------ $cmd ------------------"
+  action 303 file puts FD "$_cli_result"
+  action 330 if $counter eq 0
+   action 350 set _string $_cli_result
+   action 355 regexp "(Object identifier: )([0-9]+)" $_string _match_object _object_txt _object_id
+   action 370 if $_object_id ne 0
+    action 380 foreach cmd "sh pl so obj fp act obj $_object_id,sh pl so obj fp act obj $_object_id downlinks,sh pl so obj fp act obj $_object_id parent,sh pl so obj fp act obj $_object_id children" ","
+    action 381 cli command $cmd
+    action 382 file puts FD "------------------ $cmd ------------------"
+    action 383 file puts FD "$_cli_result"
+    action 384 increment counter 1
+    action 385 end
+   action 389 end
+  action 390 end
+  action 398 increment counter 1
+action 399 end
+action 500 foreach cmd "sh plat ha qfp act dat ut,sh plat so statu cont br,sh ppp sta,sh ppp sum,sh plat ha qfp act stat drop cl,sh platf ha qfp act infra bqs que out def all,sh int,sh log,sh l2tp tunnel summary" ","
+  action 501 cli command $cmd
+  action 502 file puts FD "------------------ $cmd ------------------"
+  action 503 file puts FD "$_cli_result"
+  action 504 increment counter 1
+action 505 end
+action 900 file close FD
+action 950 syslog msg "File '$filename' closed with $counter outputs logged."
+action 999 cli command "end"
+end
+
+
