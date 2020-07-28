@@ -1,38 +1,50 @@
-! Thu, 26 Mar 2020
+! Tue, 28 Jul 2020
 !
 ! #output-into-file
 ! Sends CLI outputs into a file, the file name is based on the hostname and unix time stamp
-!  * HW: ISR4321/K9
-!  * SW: isr4300-universalk9.16.12.01a.SPA.bin
+!  it allows to make multiple calls with different outputs to the main APPLET
+!  * HW: CSR1000v
+!  * SW: csr1000v-universalk9.17.02.01r.SPA.bin
 !
 ! Trigger:
-!  Use the command: 'event manager run output-into-file'
+!  Use the command: 'event manager run APPLET_CALLER'
 
-
-event manager applet output-into-file authorization bypass
-
+event manager applet APPLET_CALLER authorization bypass
+ ! Calls another applet twice and it stores the command outputs in the storage
+ 
  event none maxrun 60
-
+ 
  action 000 info type routername
  action 001 set filename "flash:$_info_routername-$_event_pub_sec"
- action 002 syslog msg "Creating and logging data to '$filename'."
- action 003 file open FD $filename a+
+ 
+ action 200 set cmd "show clock,show version,show inventory"
+ action 210 publish-event sub-system 7 type 1 arg1 $filename arg2 $cmd
+ 
+ action 300 set cmd "show users,show line"
+ action 310 publish-event sub-system 7 type 1 arg1 $filename arg2 $cmd
+ 
+event manager applet STORE_CMD_OUTPUT authorization bypass
+ ! Receives two arguments arg1=FILENAME, arg2=CMD
+ ! Commands must be separated by a comma
+ ! i.e filename='flash:csr1000v-1595938476' cmd='show clock,show version,show inventory'
 
+ event application sub-system 7 type 1
+
+ action 001 syslog msg "filename='$_application_data1' cmd='$_application_data2'"
+ action 010 file open FD $_application_data1 a+
  action 051 cli command "enable"
  action 052 cli command "terminal length 0"
-
  action 100 set counter 0
 
- action 200 foreach cmd "show clock,show version,show inventory" ","
-
- action 301 cli command $cmd
- action 302 file puts FD "------------------ $cmd ------------------"
- action 303 file puts FD "$_cli_result"
- action 304 increment counter 1
- action 305 end
+ action 200 foreach cmd $_application_data2 ","
+ action 201 cli command $cmd
+ action 202 file puts FD "------------------ $cmd ------------------"
+ action 203 file puts FD "$_cli_result"
+ action 204 increment counter 1
+ action 205 end
 
  action 900 file close FD
- action 950 syslog msg "File '$filename' closed with $counter outputs logged."
+ action 950 syslog msg "File '$_application_data1' closed with $counter outputs logged."
  action 999 cli command "end"
 
 end
